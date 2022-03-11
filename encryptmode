@@ -1,0 +1,131 @@
+import  os 
+from PIL import Image
+# Import  comand  PIL and AES
+from Crypto.Cipher import AES
+import random
+import string
+
+# Randomly generate 16 strings made up of lowercase letters
+def key_generator(size = 16, chars = string.ascii_lowercase):
+    return ''.join(random.choice(chars) for _ in range(size))
+
+
+
+filename = "fish.png"
+filename_encrypted_ecb = "file_encrypted_ecb"
+filename_encrypted_cbc= "file_encrypted_cbc"
+filename_decrypted_ecb = "file_decrypted_ecb"
+filename_decrypted_cbc= "file_decrypted_cbc"
+format = "bmp"
+#the funtion   key_generator  to  get  16 letter randomly
+key = key_generator(16)
+IV = key_generator(16)
+
+
+# The AES encrypted plaintext space is an integer multiple of 16, which cannot be divided evenly, so it must be filled
+
+def pad(data):
+    return data + b"\x00" * (16 - len(data) % 16)
+# Assign the image data to RGB
+def trans_format_RGB(data):
+    
+    red, green, blue = tuple(map(lambda e: [data[i] for i in range(0, len(data)) if i % 3 == e], [0, 1, 2]))
+    pixels = tuple(zip(red, green, blue))
+    return pixels
+
+
+def encrypt_image_ecb(filename):
+  
+    im = Image.open(filename)
+    name, type = os.path.splitext(filename)
+    if type != ".bmp":
+      im = im.convert('RGB')
+      im.save(name+"."+format)
+    new_filepath = os.path.splitext(filename)[0] + '.bmp'
+    im.save(new_filepath)
+   # Image.open("sample1.png").save("sample1.bmp")
+    #Convert image data to pixel value bytes
+    value_vector = im.convert('RGB').tobytes()
+    imlength = len(value_vector)
+    #map the pixel and encrytp the value 
+    value_encrypt = trans_format_RGB(aes_ecb_encrypt(key, pad(value_vector))[:imlength])
+    # create new img object and save
+    im2 = Image.new(im.mode, im.size)
+    im2.putdata(value_encrypt)
+    # save the object
+    im2.save(filename_encrypted_ecb + ".png" , "png")
+    im2=im2.convert('RGB')
+   
+    print('file encrypted ECB mode')
+def encrypt_image_cbc(filename):
+    im = Image.open(filename)
+    name, type = os.path.splitext(filename)
+    if type != ".bmp":
+      im = im.convert('RGB')
+      im.save(name+"."+format)
+    value_vector = im.convert("RGB").tobytes()
+    imlength = len(value_vector)
+    value_encrypt = trans_format_RGB(aes_cbc_encrypt(key, pad(value_vector))[:imlength])
+    im2 = Image.new(im.mode, im.size)
+    im2.putdata(value_encrypt)
+    im2.save(filename_encrypted_cbc + ".png" , "png")
+    print('file encrypted CBC mode')
+# Cifrado CBC
+def aes_cbc_encrypt(key, data, mode=AES.MODE_CBC):
+    aes = AES.new(key.encode('utf8'), mode, IV.encode('utf8'))
+    new_data = aes.encrypt(data)
+   
+    return new_data
+
+def aes_ecb_encrypt(key, data, mode=AES.MODE_ECB):
+    aes = AES.new(key.encode('utf8'), mode)
+    new_data = aes.encrypt(data)
+    return new_data
+# encrytp 2modes
+encrypt_image_ecb(filename)
+encrypt_image_cbc(filename)
+# decript image
+def aes_cbc_decrypt(key, data, mode=AES.MODE_CBC):
+  aes = AES.new(key.encode('utf8'), mode,IV.encode('utf8'))
+  new_data = aes.decrypt(data)
+  return new_data
+  
+def aes_ecb_decrypt(key, data, mode=AES.MODE_ECB):
+    
+    aes = AES.new(key.encode('utf8'), mode)
+    new_data = aes.decrypt(data)
+    return new_data
+
+def decrypt_image_ecb(filename):
+    im = Image.open(filename)
+    value_vector = im.convert("RGB").tobytes()
+    imlength = len(value_vector)
+    im = Image.open(filename)
+    name, type = os.path.splitext(filename)
+    
+    if type != ".bmp":
+      im = im.convert('RGB')
+      im.save(name+"."+format)
+    value_encrypt = trans_format_RGB(aes_ecb_decrypt(key, pad(value_vector))[:imlength])
+    im2 = Image.new(im.mode, im.size)
+    im2.putdata(value_encrypt)
+    im2.save(filename_decrypted_ecb + ".png" , "png")
+    print("file decrypted ECB mode")
+def decrypt_image_cbc(filename):
+   
+    im = Image.open(filename)
+    value_vector = im.convert("RGB").tobytes()
+    imlength = len(value_vector)
+    im = Image.open(filename)
+    name, type = os.path.splitext(filename)
+    if type != ".bmp":
+      im = im.convert('RGB')
+      im.save(name+"."+format)
+    value_encrypt = trans_format_RGB(aes_cbc_decrypt(key, pad(value_vector))[:imlength])
+    im2 = Image.new(im.mode, im.size)
+    im2.putdata(value_encrypt)
+    im2.save(filename_decrypted_cbc + ".png" , "png")
+    print("file decrypted CBC mode")
+
+decrypt_image_ecb(filename_encrypted_ecb+ ".png" )
+decrypt_image_cbc(filename_encrypted_cbc+ ".png" )
